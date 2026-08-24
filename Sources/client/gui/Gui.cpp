@@ -914,25 +914,33 @@ void Gui::renderModernStatusCard(Font* font, int screenWidth, int screenHeight) 
 
 	// Game world time (Hora del Juego)
 	long timeVal = minecraft->level->getTime();
-	int day = (int)(timeVal / 24000) + 1;
-	int timeInDay = (int)(timeVal % 24000);
-	if (timeInDay < 0) timeInDay += 24000;
+	const int ticksPerDay = Level::TICKS_PER_DAY;
+	long dayIndex = timeVal >= 0 ? timeVal / ticksPerDay
+		: -(((-timeVal) + ticksPerDay - 1) / ticksPerDay);
+	int day = (int)dayIndex + 1;
+	int timeInDay = (int)(timeVal - dayIndex * ticksPerDay);
 
-	int hours = ((timeInDay / 1000) + 6) % 24;
-	int minutes = (timeInDay % 1000) * 60 / 1000;
+	int totalMinutes = (timeInDay * 24 * 60) / ticksPerDay;
+	int hours = (totalMinutes / 60 + 6) % 24;
+	int minutes = totalMinutes % 60;
 	const char* ampm = (hours >= 12) ? "PM" : "AM";
 	int displayHours = hours % 12;
 	if (displayHours == 0) displayHours = 12;
 
 	const char* phaseName = "Dia";
 	int dayColor = 0xffffd530; // Solar gold
-	if (timeInDay < 1000) {
+	// The engine's day length is configurable (currently 19,200 ticks), while
+	// the vanilla phase boundaries are expressed in Java ticks.
+	int dayTick = ticksPerDay * 1000 / 24000;
+	int sunsetTick = ticksPerDay * 11500 / 24000;
+	int nightTick = ticksPerDay * 13000 / 24000;
+	if (timeInDay < dayTick) {
 		phaseName = "Amanecer";
 		dayColor = 0xffff7f40;
-	} else if (timeInDay < 11500) {
+	} else if (timeInDay < sunsetTick) {
 		phaseName = "Dia";
 		dayColor = 0xffffd530;
-	} else if (timeInDay < 13000) {
+	} else if (timeInDay < nightTick) {
 		phaseName = "Atardecer";
 		dayColor = 0xffff5520;
 	} else {
@@ -943,21 +951,23 @@ void Gui::renderModernStatusCard(Font* font, int screenWidth, int screenHeight) 
 	// Player coordinates & Biome
 	LocalPlayer* p = minecraft->player;
 	float px = p->x, py = p->y - p->heightOffset, pz = p->z;
-	posTranslator.to(px, py, pz);
 
 	int bx = (int)floorf(px);
 	int bz = (int)floorf(pz);
 	Biome* biome = minecraft->level->getBiome(bx, bz);
 	std::string biomeName = biome ? biome->name : "Desconocido";
 
-	// Weather / Climate description
-	std::string weatherStr = "Despejado";
-	if (biomeName.find("Ice") != std::string::npos || biomeName.find("Tundra") != std::string::npos || biomeName.find("Taiga") != std::string::npos) {
-		weatherStr = "Frio / Nieve";
-	} else if (biomeName.find("Desert") != std::string::npos) {
-		weatherStr = "Calido / Seco";
+	// This engine has no world weather state, so show the biome climate instead
+	// of presenting a biome-derived value as current rain or thunder.
+	char climateBuf[64];
+	if (biome) {
+		const char* temperature = biome->getTemperature() < 0.35f ? "Frio"
+			: biome->getTemperature() > 1.0f ? "Calido" : "Templado";
+		const char* humidity = biome->getDownfall() > 0.65f ? "Humedo"
+			: biome->getDownfall() < 0.2f ? "Seco" : "Normal";
+		sprintf(climateBuf, "%s / %s", temperature, humidity);
 	} else {
-		weatherStr = "Despejado";
+		sprintf(climateBuf, "Desconocido");
 	}
 
 	// Modern Status Card Layout with Responsive Adaptive Scaling
@@ -967,8 +977,8 @@ void Gui::renderModernStatusCard(Font* font, int screenWidth, int screenHeight) 
 		chatButtonLeft = (float)screenWidth * 0.45f;
 	}
 
-	const float baseCardW = 160.0f;
-	const float baseCardH = 46.0f;
+	const float baseCardW = 190.0f;
+	const float baseCardH = 58.0f;
 
 	// Calculate scale factor so the card never collides with center buttons on small screens (iPhone 4/5/SE)
 	float cardScale = 1.0f;
@@ -1018,7 +1028,7 @@ void Gui::renderModernStatusCard(Font* font, int screenWidth, int screenHeight) 
 
 	// Fila 2: Hora del Juego & Hora Real
 	char timeBuf[128];
-	sprintf(timeBuf, "%s %02d:%02d %s | Real %s", phaseName, displayHours, minutes, ampm, realTimeStr);
+	sprintf(timeBuf, "%s  %02d:%02d %s  |  Real %s", phaseName, displayHours, minutes, ampm, realTimeStr);
 	font->drawShadow(timeBuf, 4.0f, 13.0f, 0xffffe8a0);
 
 	// Fila 3: Barra animada del ciclo solar día/noche
@@ -1026,21 +1036,28 @@ void Gui::renderModernStatusCard(Font* font, int screenWidth, int screenHeight) 
 	int barY = 23;
 	int barW = cardW - 8;
 	fill(barX, barY, barX + barW, barY + 2, 0x800a1018);
-	float dayProgress = (float)timeInDay / 24000.0f;
+	float dayProgress = (float)timeInDay / (float)ticksPerDay;
 	int fillDayW = (int)(dayProgress * barW);
 	if (fillDayW > 0) {
 		fill(barX, barY, barX + fillDayW, barY + 2, dayColor);
 	}
 
-	// Fila 4: Indicador de Clima / Tiempo atmosférico
+	// Fila 4: Clima del bioma (no es lluvia/tormenta; el motor no simula esos estados todavía)
 	char envBuf[128];
-	sprintf(envBuf, "Clima: %s | Dia %d", weatherStr.c_str(), day);
+	sprintf(envBuf, "Clima: %s  |  Dia %d", climateBuf, day);
 	font->drawShadow(envBuf, 4.0f, 27.0f, 0xff90d0ff);
 
-	// Fila 5: Bioma actual
-	char bioBuf[128];
-	sprintf(bioBuf, "Bioma: %s", biomeName.c_str());
-	font->drawShadow(bioBuf, 4.0f, 36.0f, 0xffb8c8d8);
+	// Fila 5: Bioma actual, truncated to keep the card readable on narrow screens.
+	std::string visibleBiome = biomeName;
+	while (font->width("Bioma: " + visibleBiome) > cardW - 8 && visibleBiome.size() > 3) {
+		visibleBiome.resize(visibleBiome.size() - 1);
+	}
+	if (visibleBiome != biomeName) visibleBiome += "...";
+	font->drawShadow("Bioma: " + visibleBiome, 4.0f, 36.0f, 0xffb8c8d8);
+
+	char tickBuf[64];
+	sprintf(tickBuf, "Ticks: %d / %d", timeInDay, ticksPerDay);
+	font->drawShadow(tickBuf, 4.0f, 46.0f, 0xff819bb5);
 
 	glPopMatrix2();
 }
@@ -1484,7 +1501,3 @@ void Gui::renderToolBar( float a, int ySlot, const int screenWidth ) {
 	}
 	glDisable(GL_BLEND);
 }
-
-
-
-
