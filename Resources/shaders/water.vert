@@ -18,6 +18,8 @@ out vec3 v_WorldPos;
 out vec3 v_ViewPos;
 out vec3 v_WaveNormalView;
 out vec3 v_WorldUpView;
+out vec3 v_WorldRightView;
+out vec3 v_WorldForwardView;
 out float v_WaveHeight;
 out float v_TopFace;
 
@@ -83,6 +85,8 @@ void main()
     mat3 normalMatrix = mat3(u_ModelView);
     v_WaveNormalView = normalize(normalMatrix * normal);
     v_WorldUpView = normalize(normalMatrix * vec3(0.0, 1.0, 0.0));
+    v_WorldRightView = normalize(normalMatrix * vec3(1.0, 0.0, 0.0));
+    v_WorldForwardView = normalize(normalMatrix * vec3(0.0, 0.0, 1.0));
 
     vec4 viewPos = u_ModelView * vec4(pos, 1.0);
 

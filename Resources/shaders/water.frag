@@ -8,6 +8,8 @@ in vec3 v_WorldPos;
 in vec3 v_ViewPos;
 in vec3 v_WaveNormalView;
 in vec3 v_WorldUpView;
+in vec3 v_WorldRightView;
+in vec3 v_WorldForwardView;
 in float v_WaveHeight;
 in float v_TopFace;
 
@@ -20,10 +22,10 @@ uniform float u_Time;
 out vec4 fragColor;
 
 const vec3 SHALLOW =
-vec3(0.18, 0.62, 0.88);
+vec3(0.08, 0.58, 0.82);
 
 const vec3 DEEP =
-vec3(0.03, 0.16, 0.42);
+vec3(0.015, 0.12, 0.32);
 
 const vec3 FOAM =
 vec3(0.95, 0.98, 1.0);
@@ -37,29 +39,33 @@ float hash(vec2 p)
     return fract(p.x * p.y);
 }
 
-float waveHeight(vec2 p, float time)
+vec3 waveField(vec2 p, float time)
 {
-    const float amplitude = 0.045;
-    const float speed = 0.9;
-    vec2 d1 = normalize(vec2(1.0, 0.25));
-    vec2 d2 = normalize(vec2(-0.4, 1.0));
-    vec2 d3 = normalize(vec2(0.8, -0.7));
-    vec2 d4 = normalize(vec2(-1.0, -0.2));
-
-    return (
-        sin(dot(p, d1) * 1.7 + time * speed) * 0.55 +
-        sin(dot(p, d2) * 2.4 - time * speed * 1.2) * 0.25 +
-        sin(dot(p, d3) * 3.1 + time * speed * 0.7) * 0.13 +
-        sin(dot(p, d4) * 4.2 - time * speed * 0.5) * 0.07
-    ) * amplitude;
+    const float amplitude = 0.038;
+    const float frequency = 1.35;
+    vec2 d1 = normalize(vec2(1.0, 0.18));
+    vec2 d2 = normalize(vec2(-0.28, 1.0));
+    vec2 d3 = normalize(vec2(0.72, -0.69));
+    float a1 = dot(p, d1) * frequency + time * 0.75;
+    float a2 = dot(p, d2) * frequency * 1.37 - time * 0.53;
+    float a3 = dot(p, d3) * frequency * 1.91 + time * 0.31;
+    float height = (sin(a1) + sin(a2) * 0.52 + sin(a3) * 0.22) * amplitude;
+    vec2 gradient =
+        (d1 * cos(a1) +
+         d2 * cos(a2) * 0.52 * 1.37 +
+         d3 * cos(a3) * 0.22 * 1.91) * amplitude;
+    return vec3(height, gradient);
 }
 
 void main()
 {
-    float wave = waveHeight(v_WorldPos.xz, u_Time);
-    vec3 dx = dFdx(v_ViewPos) + v_WorldUpView * dFdx(wave);
-    vec3 dy = dFdy(v_ViewPos) + v_WorldUpView * dFdy(wave);
-    vec3 N = normalize(cross(dx, dy));
+    vec3 field = waveField(v_WorldPos.xz, u_Time);
+    float wave = field.x;
+    vec3 N = normalize(
+        v_WorldUpView -
+        v_WorldRightView * field.y -
+        v_WorldForwardView * field.z
+    );
     vec3 V = normalize(-v_ViewPos);
 
     float NdotV = max(dot(N, V), 0.0);
@@ -99,19 +105,10 @@ void main()
         smoothstep(
             0.015,
             0.04,
-            abs(wave)
+            wave
         );
 
-    float foamNoise =
-        hash(floor(v_WorldPos.xz * 2.0));
-
-    float foam =
-        crest *
-        smoothstep(
-            0.25,
-            1.0,
-            foamNoise
-        );
+    float foam = crest * v_TopFace;
 
     foam *= v_TopFace;
 

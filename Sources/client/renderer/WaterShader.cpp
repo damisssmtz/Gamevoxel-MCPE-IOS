@@ -24,6 +24,8 @@ out vec3 v_WorldPos;
 out vec3 v_ViewPos;
 out vec3 v_WaveNormalView;
 out vec3 v_WorldUpView;
+out vec3 v_WorldRightView;
+out vec3 v_WorldForwardView;
 out float v_WaveHeight;
 out float v_TopFace;
 
@@ -67,6 +69,8 @@ void main() {
     mat3 normalMatrix = mat3(u_ModelView);
     v_WaveNormalView = normalize(normalMatrix * wave_normal_local);
     v_WorldUpView = normalize(normalMatrix * vec3(0.0, 1.0, 0.0));
+    v_WorldRightView = normalize(normalMatrix * vec3(1.0, 0.0, 0.0));
+    v_WorldForwardView = normalize(normalMatrix * vec3(0.0, 0.0, 1.0));
 
     vec4 viewPos = u_ModelView * vec4(displaced_pos, 1.0);
     v_ViewPos = viewPos.xyz;
@@ -86,6 +90,8 @@ in vec3 v_WorldPos;
 in vec3 v_ViewPos;
 in vec3 v_WaveNormalView;
 in vec3 v_WorldUpView;
+in vec3 v_WorldRightView;
+in vec3 v_WorldForwardView;
 in float v_WaveHeight;
 in float v_TopFace;
 
@@ -103,8 +109,8 @@ const float absorption_strength = 1.0;
 const float shore_foam_distance = 1.5;
 const float wave_amplitude = 0.05;
 
-const vec4 shallow_color = vec4(0.18, 0.65, 0.92, 0.55);
-const vec4 deep_color = vec4(0.04, 0.20, 0.52, 0.88);
+const vec4 shallow_color = vec4(0.08, 0.58, 0.82, 0.55);
+const vec4 deep_color = vec4(0.015, 0.12, 0.32, 0.88);
 const vec4 foam_color = vec4(0.92, 0.97, 1.0, 0.75);
 const vec4 sun_glow_color = vec4(0.95, 0.98, 1.0, 1.0);
 
@@ -114,27 +120,34 @@ const float rain_ripple_speed = 2.8;
 const float sss_strength = 0.35;
 const float fresnel_f0 = 0.04;
 
-float waveHeight(vec2 p, float time)
+vec3 waveField(vec2 p, float time)
 {
-    const float amplitude = 0.05;
-    const float speed = 1.0;
-    const float frequency = 1.8;
-    vec2 d1 = normalize(vec2(0.9, 0.4));
-    vec2 d2 = normalize(vec2(-0.5, 0.866));
-
-    return (
-        sin(dot(p, d1) * frequency + time * speed) +
-        sin(dot(p, d2) * frequency * 1.414 - time * speed * 0.75) * 0.6
-    ) * amplitude;
+    const float amplitude = 0.038;
+    const float frequency = 1.35;
+    vec2 d1 = normalize(vec2(1.0, 0.18));
+    vec2 d2 = normalize(vec2(-0.28, 1.0));
+    vec2 d3 = normalize(vec2(0.72, -0.69));
+    float a1 = dot(p, d1) * frequency + time * 0.75;
+    float a2 = dot(p, d2) * frequency * 1.37 - time * 0.53;
+    float a3 = dot(p, d3) * frequency * 1.91 + time * 0.31;
+    float height = (sin(a1) + sin(a2) * 0.52 + sin(a3) * 0.22) * amplitude;
+    vec2 gradient =
+        (d1 * cos(a1) +
+         d2 * cos(a2) * 0.52 * 1.37 +
+         d3 * cos(a3) * 0.22 * 1.91) * amplitude;
+    return vec3(height, gradient);
 }
 
 
 
 void main() {
-    float wave = waveHeight(v_WorldPos.xz, u_Time);
-    vec3 dx = dFdx(v_ViewPos) + v_WorldUpView * dFdx(wave);
-    vec3 dy = dFdy(v_ViewPos) + v_WorldUpView * dFdy(wave);
-    vec3 N = normalize(cross(dx, dy));
+    vec3 field = waveField(v_WorldPos.xz, u_Time);
+    float wave = field.x;
+    vec3 N = normalize(
+        v_WorldUpView -
+        v_WorldRightView * field.y -
+        v_WorldForwardView * field.z
+    );
 
     vec3 V = -normalize(v_ViewPos);
 
@@ -146,7 +159,7 @@ void main() {
     float distance_z = length(v_ViewPos);
     
     // Simulate depth factor based on view angle and wave height for a rich look
-    float depth_factor = clamp((v_WaveHeight * 15.0) + (1.0 - NdotV) * 0.5, 0.0, 1.0);
+    float depth_factor = clamp((wave * 8.0) + (1.0 - NdotV) * 0.35, 0.0, 1.0);
     depth_factor *= absorption_strength;
 
     vec3 water_color = mix(shallow_color.rgb, deep_color.rgb, depth_factor);
@@ -155,7 +168,7 @@ void main() {
     }
 
     // Procedural foam strictly on wave crests (no shore intersection needed, 100x faster)
-    float crest_foam = smoothstep(wave_amplitude * 0.4, wave_amplitude * 0.95, abs(wave)) * v_TopFace;
+    float crest_foam = smoothstep(wave_amplitude * 0.4, wave_amplitude * 0.95, wave) * v_TopFace;
     
     // Fade out foam in the far distance to keep it clean and reduce noise
     float distance_fade = clamp(1.0 - (distance_z / 48.0), 0.0, 1.0);
