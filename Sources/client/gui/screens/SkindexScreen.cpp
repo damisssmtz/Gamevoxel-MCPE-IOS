@@ -165,6 +165,8 @@ static bool readBedrockSkins(Minecraft* minecraft, const std::string& dirPath, S
 
 	size_t skinsArrayPos = content.find("\"skins\"");
 	if (skinsArrayPos == std::string::npos) return false;
+	size_t skinsArrayEnd = content.find(']', skinsArrayPos);
+	if (skinsArrayEnd == std::string::npos) return false;
 
 	if (pack.displayName == pack.name) {
 		auto getTopJsonProp = [&](const std::string& prop) -> std::string {
@@ -204,9 +206,9 @@ static bool readBedrockSkins(Minecraft* minecraft, const std::string& dirPath, S
 	};
 
 	size_t pos = skinsArrayPos;
-	while ((pos = content.find('{', pos)) != std::string::npos) {
+	while ((pos = content.find('{', pos)) != std::string::npos && pos < skinsArrayEnd) {
 		size_t endObj = content.find('}', pos);
-		if (endObj == std::string::npos) break;
+		if (endObj == std::string::npos || endObj > skinsArrayEnd) break;
 
 		std::string objStr = content.substr(pos, endObj - pos + 1);
 
@@ -250,6 +252,30 @@ static bool readBedrockSkins(Minecraft* minecraft, const std::string& dirPath, S
 	}
 
 	return !pack.skins.empty();
+}
+
+static std::string skinPathKey(std::string path);
+
+static void removeDuplicatePackSkins(SkinPack& pack) {
+	std::set<std::string> seenTextures;
+	std::vector<std::string> skins;
+	std::vector<std::string> displayNames;
+	std::vector<std::string> geometries;
+
+	for (size_t i = 0; i < pack.skins.size(); ++i) {
+		std::string textureKey = skinPathKey(pack.skins[i]);
+		size_t slash = textureKey.find_last_of('/');
+		if (slash != std::string::npos) textureKey = textureKey.substr(slash + 1);
+		if (!seenTextures.insert(textureKey).second) continue;
+
+		skins.push_back(pack.skins[i]);
+		displayNames.push_back(i < pack.skinDisplayNames.size() ? pack.skinDisplayNames[i] : "");
+		geometries.push_back(i < pack.skinGeometries.size() ? pack.skinGeometries[i] : "");
+	}
+
+	pack.skins.swap(skins);
+	pack.skinDisplayNames.swap(displayNames);
+	pack.skinGeometries.swap(geometries);
 }
 
 static const std::vector<std::string> g_internalPacks = {
@@ -525,6 +551,9 @@ void SkindexScreen::scanSkins() {
 		}
 	}
 	skinPacks.swap(uniquePacks);
+	for (SkinPack& pack : skinPacks) {
+		removeDuplicatePackSkins(pack);
+	}
 
 	if (skinPacks.empty()) {
 		SkinPack pack;
