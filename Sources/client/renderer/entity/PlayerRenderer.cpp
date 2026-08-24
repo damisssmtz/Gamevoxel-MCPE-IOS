@@ -86,6 +86,27 @@ static bool isSlimPlayerSkin(Mob* mob, EntityRenderDispatcher* dispatcher) {
 	return false;
 }
 
+void PlayerRenderer::scale(Mob* mob, float a) {
+	super::scale(mob, a);
+	if (!entityRenderDispatcher || !entityRenderDispatcher->options) return;
+
+	const std::string preset = entityRenderDispatcher->options->getStringValue(OPTIONS_SKIN_MODEL);
+	float modelScale = 1.0f;
+	if (preset == "mini_me" || preset == "baby" || preset == "mrmphs") {
+		modelScale = 0.65f;
+	} else if (preset == "chibi" || preset == "big_head") {
+		modelScale = 0.85f;
+	} else if (preset == "giant") {
+		modelScale = 1.4f;
+	}
+
+	if (modelScale != 1.0f) {
+		// Keep the feet close to the ground while changing the full model size.
+		glTranslatef2(0.0f, (1.0f - modelScale) * 1.5f, 0.0f);
+		glScalef2(modelScale, modelScale, modelScale);
+	}
+}
+
 void PlayerRenderer::renderName( Mob* mob, float x, float y, float z ){
 	//@todo: figure out how to handle HideGUI
 	if (mob != entityRenderDispatcher->cameraEntity && mob->level->adventureSettings.showNameTags) {

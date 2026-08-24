@@ -43,6 +43,7 @@ SkindexScreen::SkindexScreen(int packIdx, int skinIdx)
 	currentPackIndex(packIdx),
 	currentSkinIndex(skinIdx),
 	isSlimModel(false),
+	modelPreset("normal"),
 	showFullBodyCards(true),
 	autoRotate(true),
 	playerRot(0.0f),
@@ -75,7 +76,12 @@ void SkindexScreen::clearCardButtons() {
 }
 
 void SkindexScreen::updateModelButtonText() {
-	btnModel.msg = I18n::get("skindex.model") + ": " + (isSlimModel ? I18n::get("skindex.model.slim") : I18n::get("skindex.model.normal"));
+	std::string label = I18n::get("skindex.model.normal");
+	if (modelPreset == "slim") label = I18n::get("skindex.model.slim");
+	else if (modelPreset == "mini_me") label = I18n::get("skindex.model.mini");
+	else if (modelPreset == "chibi") label = I18n::get("skindex.model.chibi");
+	else if (modelPreset == "giant") label = I18n::get("skindex.model.giant");
+	btnModel.msg = I18n::get("skindex.model") + ": " + label;
 }
 
 void SkindexScreen::updateDefaultModelForSkin() {
@@ -571,6 +577,13 @@ void SkindexScreen::init() {
 	if (!modelSlim) modelSlim = new HumanoidModel(0.0f, 0.0f, 64, 64, true);
 
 	scanSkins();
+	modelPreset = minecraft->options.getStringValue(OPTIONS_SKIN_MODEL);
+	if (modelPreset != "normal" && modelPreset != "slim" && modelPreset != "mini_me" &&
+		modelPreset != "chibi" && modelPreset != "giant") {
+		modelPreset = "normal";
+	}
+	isSlimModel = modelPreset == "slim";
+	updateModelButtonText();
 
 	if (currentPackIndex >= 0 && currentSkinIndex >= 0) {
 		if (currentPackIndex >= (int)skinPacks.size()) currentPackIndex = 0;
@@ -1784,6 +1797,9 @@ void SkindexScreen::render(int xm, int ym, float a) {
 		int renderCenterY = topY + (rightAvailableH - 30) / 2 + 10;
 		glTranslatef((float)(rightX + rightW / 2), (float)renderCenterY, -200);
 		float ss = 55.0f;
+		if (modelPreset == "mini_me") ss *= 0.65f;
+		else if (modelPreset == "chibi") ss *= 0.85f;
+		else if (modelPreset == "giant") ss *= 1.4f;
 		glScalef(-ss, ss, ss);
 		glRotatef(180.0f, 0, 1, 0);
 		glRotatef(15.0f, 1, 0, 0);
@@ -1875,7 +1891,7 @@ void SkindexScreen::buttonClicked(Button* button) {
 		SkinPack& activePack = skinPacks[currentPackIndex];
 		if (!activePack.skins.empty()) {
 			minecraft->options.set(OPTIONS_SKIN, activePack.skins[currentSkinIndex]);
-			minecraft->options.set(OPTIONS_SKIN_MODEL, isSlimModel ? "slim" : "normal");
+			minecraft->options.set(OPTIONS_SKIN_MODEL, modelPreset);
 			minecraft->options.save();
 			
 			if (minecraft->player) {
@@ -1884,7 +1900,16 @@ void SkindexScreen::buttonClicked(Button* button) {
 		}
 		minecraft->setScreen(nullptr);
 	} else if (button->id == btnModel.id) {
-		isSlimModel = !isSlimModel;
+		static const char* presets[] = {"normal", "slim", "mini_me", "chibi", "giant"};
+		int presetIndex = 0;
+		for (int i = 0; i < 5; ++i) {
+			if (modelPreset == presets[i]) {
+				presetIndex = i;
+				break;
+			}
+		}
+		modelPreset = presets[(presetIndex + 1) % 5];
+		isSlimModel = modelPreset == "slim";
 		updateModelButtonText();
 
 		if (!skinPacks.empty() && currentPackIndex >= 0 && currentPackIndex < (int)skinPacks.size()) {

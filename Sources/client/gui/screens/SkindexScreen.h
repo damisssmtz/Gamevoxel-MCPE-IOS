@@ -61,6 +61,7 @@ private:
 	int currentPackIndex;
 	int currentSkinIndex;
 	bool isSlimModel;
+	std::string modelPreset;
 	bool showFullBodyCards;
 	bool autoRotate;
 	float playerRot;

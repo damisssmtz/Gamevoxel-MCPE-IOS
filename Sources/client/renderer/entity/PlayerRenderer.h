@@ -11,6 +11,7 @@ public:
 	~PlayerRenderer();
 
 	virtual int prepareArmor(Mob* mob, int layer, float a);
+	virtual void scale(Mob* mob, float a);
 	bool isModernPlayerSkin(Mob* mob);
 	virtual void render(Entity* mob, float x, float y, float z, float rot, float a);
 
