@@ -23,6 +23,7 @@ out float v_FogDepth;
 out vec3 v_WorldPos;
 out vec3 v_ViewPos;
 out vec3 v_WaveNormalView;
+out vec3 v_WorldUpView;
 out float v_WaveHeight;
 out float v_TopFace;
 
@@ -56,11 +57,7 @@ void main() {
 
     vec3 displaced_pos = a_Position;
     
-    if (v_TopFace > 0.1) {
-        displaced_pos.y += v_WaveHeight * v_TopFace;
-    }
-
-    v_WorldPos = displaced_pos + u_ChunkPos;
+    v_WorldPos = raw_world_pos;
 
     float n_x = -(cos1 * 0.9 * k1 + cos2 * (-0.5) * k2 * 0.6) * wave_amplitude * normal_steepness;
     float n_z = -(cos1 * 0.4 * k1 + cos2 * 0.866 * k2 * 0.6) * wave_amplitude * normal_steepness;
@@ -69,6 +66,7 @@ void main() {
 
     mat3 normalMatrix = mat3(u_ModelView);
     v_WaveNormalView = normalize(normalMatrix * wave_normal_local);
+    v_WorldUpView = normalize(normalMatrix * vec3(0.0, 1.0, 0.0));
 
     vec4 viewPos = u_ModelView * vec4(displaced_pos, 1.0);
     v_ViewPos = viewPos.xyz;
@@ -87,6 +85,7 @@ in float v_FogDepth;
 in vec3 v_WorldPos;
 in vec3 v_ViewPos;
 in vec3 v_WaveNormalView;
+in vec3 v_WorldUpView;
 in float v_WaveHeight;
 in float v_TopFace;
 
@@ -115,10 +114,27 @@ const float rain_ripple_speed = 2.8;
 const float sss_strength = 0.35;
 const float fresnel_f0 = 0.04;
 
+float waveHeight(vec2 p, float time)
+{
+    const float amplitude = 0.05;
+    const float speed = 1.0;
+    const float frequency = 1.8;
+    vec2 d1 = normalize(vec2(0.9, 0.4));
+    vec2 d2 = normalize(vec2(-0.5, 0.866));
+
+    return (
+        sin(dot(p, d1) * frequency + time * speed) +
+        sin(dot(p, d2) * frequency * 1.414 - time * speed * 0.75) * 0.6
+    ) * amplitude;
+}
+
 
 
 void main() {
-    vec3 N = normalize(v_WaveNormalView);
+    float wave = waveHeight(v_WorldPos.xz, u_Time);
+    vec3 dx = dFdx(v_ViewPos) + v_WorldUpView * dFdx(wave);
+    vec3 dy = dFdy(v_ViewPos) + v_WorldUpView * dFdy(wave);
+    vec3 N = normalize(cross(dx, dy));
 
     vec3 V = -normalize(v_ViewPos);
 
@@ -139,7 +155,7 @@ void main() {
     }
 
     // Procedural foam strictly on wave crests (no shore intersection needed, 100x faster)
-    float crest_foam = smoothstep(wave_amplitude * 0.4, wave_amplitude * 0.95, v_WaveHeight) * v_TopFace;
+    float crest_foam = smoothstep(wave_amplitude * 0.4, wave_amplitude * 0.95, abs(wave)) * v_TopFace;
     
     // Fade out foam in the far distance to keep it clean and reduce noise
     float distance_fade = clamp(1.0 - (distance_z / 48.0), 0.0, 1.0);

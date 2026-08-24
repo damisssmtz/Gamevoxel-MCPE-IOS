@@ -17,6 +17,7 @@ out float v_FogDepth;
 out vec3 v_WorldPos;
 out vec3 v_ViewPos;
 out vec3 v_WaveNormalView;
+out vec3 v_WorldUpView;
 out float v_WaveHeight;
 out float v_TopFace;
 
@@ -54,13 +55,7 @@ void main()
     v_WaveHeight = height * WAVE_AMPLITUDE;
 
     vec3 pos = a_Position;
-
-    if(v_TopFace > 0.1)
-    {
-        pos.y += v_WaveHeight * v_TopFace;
-    }
-
-    v_WorldPos = pos + u_ChunkPos;
+    v_WorldPos = worldPos;
 
     float eps = 0.15;
 
@@ -87,6 +82,7 @@ void main()
 
     mat3 normalMatrix = mat3(u_ModelView);
     v_WaveNormalView = normalize(normalMatrix * normal);
+    v_WorldUpView = normalize(normalMatrix * vec3(0.0, 1.0, 0.0));
 
     vec4 viewPos = u_ModelView * vec4(pos, 1.0);
 

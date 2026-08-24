@@ -7,6 +7,7 @@ in float v_FogDepth;
 in vec3 v_WorldPos;
 in vec3 v_ViewPos;
 in vec3 v_WaveNormalView;
+in vec3 v_WorldUpView;
 in float v_WaveHeight;
 in float v_TopFace;
 
@@ -36,9 +37,29 @@ float hash(vec2 p)
     return fract(p.x * p.y);
 }
 
+float waveHeight(vec2 p, float time)
+{
+    const float amplitude = 0.045;
+    const float speed = 0.9;
+    vec2 d1 = normalize(vec2(1.0, 0.25));
+    vec2 d2 = normalize(vec2(-0.4, 1.0));
+    vec2 d3 = normalize(vec2(0.8, -0.7));
+    vec2 d4 = normalize(vec2(-1.0, -0.2));
+
+    return (
+        sin(dot(p, d1) * 1.7 + time * speed) * 0.55 +
+        sin(dot(p, d2) * 2.4 - time * speed * 1.2) * 0.25 +
+        sin(dot(p, d3) * 3.1 + time * speed * 0.7) * 0.13 +
+        sin(dot(p, d4) * 4.2 - time * speed * 0.5) * 0.07
+    ) * amplitude;
+}
+
 void main()
 {
-    vec3 N = normalize(v_WaveNormalView);
+    float wave = waveHeight(v_WorldPos.xz, u_Time);
+    vec3 dx = dFdx(v_ViewPos) + v_WorldUpView * dFdx(wave);
+    vec3 dy = dFdy(v_ViewPos) + v_WorldUpView * dFdy(wave);
+    vec3 N = normalize(cross(dx, dy));
     vec3 V = normalize(-v_ViewPos);
 
     float NdotV = max(dot(N, V), 0.0);
@@ -78,7 +99,7 @@ void main()
         smoothstep(
             0.015,
             0.04,
-            abs(v_WaveHeight)
+            abs(wave)
         );
 
     float foamNoise =
