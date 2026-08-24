@@ -273,6 +273,10 @@ static std::string skinPathKey(std::string path) {
 	std::transform(path.begin(), path.end(), path.begin(), [](unsigned char c) {
 		return (char)std::tolower(c);
 	});
+	size_t first = path.find_first_not_of(" \t\r\n");
+	size_t last = path.find_last_not_of(" \t\r\n");
+	if (first == std::string::npos) return "";
+	path = path.substr(first, last - first + 1);
 	return path;
 }
 
@@ -479,13 +483,45 @@ void SkindexScreen::scanSkins() {
 	});
 
 	// A pack can be discovered once from bundled assets and once from the
-	// writable skin directory. Keep the first (bundled/custom-priority) entry.
+	// writable skin directory. Merge aliases instead of showing two headers.
 	std::set<std::string> seenPacks;
 	std::vector<SkinPack> uniquePacks;
 	for (const SkinPack& pack : skinPacks) {
-		std::string key = skinPathKey(pack.name);
+		std::string displayKey = skinPathKey(pack.displayName);
+		// Some manifests use a display name that differs only by whitespace or
+		// casing from the folder name. Treat that alias as the same pack too.
+		std::string key = displayKey.empty() ? skinPathKey(pack.name) : displayKey;
 		if (seenPacks.insert(key).second) {
 			uniquePacks.push_back(pack);
+			continue;
+		}
+
+		for (SkinPack& existing : uniquePacks) {
+			std::string existingDisplayKey = skinPathKey(existing.displayName);
+			std::string existingKey = existingDisplayKey.empty()
+				? skinPathKey(existing.name) : existingDisplayKey;
+			if (existingKey != key) continue;
+
+			existing.skinDisplayNames.resize(existing.skins.size());
+			existing.skinGeometries.resize(existing.skins.size());
+			for (size_t i = 0; i < pack.skins.size(); ++i) {
+				std::string skinKey = skinPathKey(pack.skins[i]);
+				bool alreadyPresent = false;
+				for (const std::string& existingSkin : existing.skins) {
+					if (skinPathKey(existingSkin) == skinKey) {
+						alreadyPresent = true;
+						break;
+					}
+				}
+				if (!alreadyPresent) {
+					existing.skins.push_back(pack.skins[i]);
+					existing.skinDisplayNames.push_back(
+						i < pack.skinDisplayNames.size() ? pack.skinDisplayNames[i] : "");
+					existing.skinGeometries.push_back(
+						i < pack.skinGeometries.size() ? pack.skinGeometries[i] : "");
+				}
+			}
+			break;
 		}
 	}
 	skinPacks.swap(uniquePacks);
