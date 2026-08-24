@@ -1,0 +1,109 @@
+﻿void LevelRenderer::generateCloudMesh(float cr, float cg, float cb) {
+	isCloudMeshGenerated = true;
+
+	TextureId cloudTexId = textures->loadTexture("environment/clouds.png");
+	const TextureData* texData = textures->getTemporaryTextureData(cloudTexId);
+
+	if (!texData || !texData->data || texData->w <= 0 || texData->h <= 0) {
+		LOGI("Could not generate 3D clouds: texture data missing\n");
+		return;
+	}
+
+	int width = texData->w;
+	int height = texData->h;
+	float scale = 12.0f;
+	float cHeight = 4.0f;
+
+	auto getAlpha = [&](int px, int pz) -> unsigned char {
+		if (px < 0) px += width;
+		if (px >= width) px -= width;
+		if (pz < 0) pz += height;
+		if (pz >= height) pz -= height;
+		int idx = (pz * width + px) * 4;
+		if (texData->format == TEXF_UNCOMPRESSED_8888) {
+			return texData->data[idx + 3];
+		} else {
+			return (texData->data[idx] > 10) ? 255 : 0;
+		}
+	};
+
+	auto packColor = [](float r, float g, float b, float a) -> GLuint {
+		int ri = (int)(r * 255); if (ri > 255) ri = 255; if (ri < 0) ri = 0;
+		int gi = (int)(g * 255); if (gi > 255) gi = 255; if (gi < 0) gi = 0;
+		int bi = (int)(b * 255); if (bi > 255) bi = 255; if (bi < 0) bi = 0;
+		int ai = (int)(a * 255); if (ai > 255) ai = 255; if (ai < 0) ai = 0;
+		return (ai << 24) | (bi << 16) | (gi << 8) | ri;
+	};
+
+	std::vector<VERTEX> verts;
+	verts.reserve(width * height / 3);
+
+	// Bake white shading for faces (1.0 top, 0.7 bottom, 0.85 sides) with opaque alpha (1.0f)
+	GLuint topColor = packColor(1.0f, 1.0f, 1.0f, 1.0f);
+	GLuint bottomColor = packColor(0.7f, 0.7f, 0.7f, 1.0f);
+	GLuint sideColor = packColor(0.85f, 0.85f, 0.85f, 1.0f);
+
+	auto addQuad = [&](float ax0, float ay0, float az0,
+	                   float ax1, float ay1, float az1,
+	                   float ax2, float ay2, float az2,
+	                   float ax3, float ay3, float az3,
+	                   GLuint color) {
+		VERTEX v;
+		v.u = 0; v.v = 0;
+		v.nx = 0; v.ny = 0; v.nz = 0;
+		v.color = color;
+
+		v.x = ax0; v.y = ay0; v.z = az0; verts.push_back(v);
+		v.x = ax1; v.y = ay1; v.z = az1; verts.push_back(v);
+		v.x = ax2; v.y = ay2; v.z = az2; verts.push_back(v);
+
+		v.x = ax0; v.y = ay0; v.z = az0; verts.push_back(v);
+		v.x = ax2; v.y = ay2; v.z = az2; verts.push_back(v);
+		v.x = ax3; v.y = ay3; v.z = az3; verts.push_back(v);
+	};
+
+	int step = 4; // Reduce vertex count by 16x
+	for (int cx = 0; cx < width; cx += step) {
+		for (int cz = 0; cz < height; cz += step) {
+			unsigned char alpha = getAlpha(cx, cz);
+			if (alpha < 10) continue;
+
+			float x0 = cx * scale;
+			float z0 = cz * scale;
+			float x1 = x0 + scale * step;
+			float z1 = z0 + scale * step;
+			float y0 = 0.0f;
+			float y1 = cHeight;
+
+			bool isFancy = mc->options.getBooleanValue(OPTIONS_FANCY_GRAPHICS);
+			if (isFancy) {
+				addQuad(x0,y1,z1, x1,y1,z1, x1,y1,z0, x0,y1,z0, topColor);
+				addQuad(x0,y0,z0, x1,y0,z0, x1,y0,z1, x0,y0,z1, bottomColor);
+
+				if (getAlpha(cx - step, cz) < 10)
+					addQuad(x0,y0,z1, x0,y1,z1, x0,y1,z0, x0,y0,z0, sideColor);
+				if (getAlpha(cx + step, cz) < 10)
+					addQuad(x1,y0,z0, x1,y1,z0, x1,y1,z1, x1,y0,z1, sideColor);
+				if (getAlpha(cx, cz - step) < 10)
+					addQuad(x0,y0,z0, x0,y1,z0, x1,y1,z0, x1,y0,z0, sideColor);
+				if (getAlpha(cx, cz + step) < 10)
+					addQuad(x1,y0,z1, x1,y1,z1, x0,y1,z1, x0,y0,z1, sideColor);
+			} else {
+				addQuad(x0,y0,z0, x1,y0,z0, x1,y0,z1, x0,y0,z1, bottomColor);
+			}
+		}
+	}
+
+	if (verts.empty()) return;
+
+	GLuint vbo = 0;
+	glGenBuffers2(1, &vbo);
+	glBindBuffer2(GL_ARRAY_BUFFER, vbo);
+	glBufferData2(GL_ARRAY_BUFFER, verts.size() * sizeof(VERTEX), verts.data(), GL_STATIC_DRAW);
+	glBindBuffer2(GL_ARRAY_BUFFER, 0);
+
+	cloudRenderChunk = RenderChunk(vbo, (int)verts.size());
+	LOGI("Cloud mesh: %d vertices\n", (int)verts.size());
+}
+
+
