@@ -60,7 +60,7 @@ void PlayerRenderer::setupRotations( Entity* mob, float bob, float bodyRot, floa
 
 bool PlayerRenderer::isModernPlayerSkin(Mob* mob) {
 	const std::string texName = mob->getTexture();
-	TextureId texId = entityRenderDispatcher->textures->loadTexture(texName);
+	TextureId texId = entityRenderDispatcher->textures->loadTexture(texName, false);
 	if (!Textures::isTextureIdValid(texId))
 		return false;
 	const TextureData* texData = entityRenderDispatcher->textures->getTemporaryTextureData(texId);

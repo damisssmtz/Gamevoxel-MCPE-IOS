@@ -265,7 +265,7 @@ void StartMenuScreen::render( int xm, int ym, float a )
 		std::string skinPath = minecraft->options.getStringValue(OPTIONS_SKIN);
 		if (skinPath.empty() || skinPath == "Default") skinPath = "mob/char.png";
 
-		TextureId skinTexId = minecraft->textures->loadTexture(skinPath);
+		TextureId skinTexId = minecraft->textures->loadTexture(skinPath, false);
 
 		// Detect skin dimensions for correct UV layout
 		int skinW = 64, skinH = 64;

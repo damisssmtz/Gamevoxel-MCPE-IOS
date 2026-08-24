@@ -2,6 +2,8 @@
 #include "RenameSkinScreen.h"
 #include "NewPackScreen.h"
 #include <algorithm>
+#include <cctype>
+#include <set>
 #include "../../Minecraft.h"
 #include "../../Options.h"
 #include "../../player/LocalPlayer.h"
@@ -266,6 +268,14 @@ static const std::vector<std::string> g_internalPacks = {
 	"Ultimate-SpiderMan-Skinpack"
 };
 
+static std::string skinPathKey(std::string path) {
+	std::replace(path.begin(), path.end(), '\\', '/');
+	std::transform(path.begin(), path.end(), path.begin(), [](unsigned char c) {
+		return (char)std::tolower(c);
+	});
+	return path;
+}
+
 void SkindexScreen::scanSkins() {
 	skinPacks.clear();
 	ensureSkinsDir();
@@ -273,8 +283,12 @@ void SkindexScreen::scanSkins() {
 	// Helper function to check if a pack exists in Resources/images/skins (internal)
 	auto packExistsInData = [](const std::string& packName) -> bool {
 #ifdef _WIN32
-		std::string dataPath = "data\\images\\skins\\" + packName;
+		std::string dataPath = "Resources\\images\\skins\\" + packName;
 		DWORD attrib = GetFileAttributesA(dataPath.c_str());
+		if (attrib == INVALID_FILE_ATTRIBUTES) {
+			dataPath = "data\\images\\skins\\" + packName;
+			attrib = GetFileAttributesA(dataPath.c_str());
+		}
 		return (attrib != INVALID_FILE_ATTRIBUTES && (attrib & FILE_ATTRIBUTE_DIRECTORY));
 #else
 		for (const auto& p : g_internalPacks) {
@@ -293,7 +307,7 @@ void SkindexScreen::scanSkins() {
 	// 1. Scan Internal Packs from Resources/images/skins
 #ifdef _WIN32
 	WIN32_FIND_DATAA findDirData;
-	HANDLE hFindDir = FindFirstFileA("data\\images\\skins\\*", &findDirData);
+	HANDLE hFindDir = FindFirstFileA("Resources\\images\\skins\\*", &findDirData);
 	if (hFindDir != INVALID_HANDLE_VALUE) {
 		do {
 			if (findDirData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
@@ -308,7 +322,7 @@ void SkindexScreen::scanSkins() {
 					if (isBedrockPack(minecraft, fullDirPath)) {
 						readBedrockSkins(minecraft, fullDirPath, pack);
 					} else {
-						std::string searchPath = "data\\images\\skins\\" + dirName + "\\*.png";
+						std::string searchPath = "Resources\\images\\skins\\" + dirName + "\\*.png";
 						WIN32_FIND_DATAA findFileData;
 						HANDLE hFindFile = FindFirstFileA(searchPath.c_str(), &findFileData);
 						if (hFindFile != INVALID_HANDLE_VALUE) {
@@ -464,6 +478,18 @@ void SkindexScreen::scanSkins() {
 		return a.name < b.name;
 	});
 
+	// A pack can be discovered once from bundled assets and once from the
+	// writable skin directory. Keep the first (bundled/custom-priority) entry.
+	std::set<std::string> seenPacks;
+	std::vector<SkinPack> uniquePacks;
+	for (const SkinPack& pack : skinPacks) {
+		std::string key = skinPathKey(pack.name);
+		if (seenPacks.insert(key).second) {
+			uniquePacks.push_back(pack);
+		}
+	}
+	skinPacks.swap(uniquePacks);
+
 	if (skinPacks.empty()) {
 		SkinPack pack;
 		pack.name = "Default";
@@ -506,7 +532,7 @@ void SkindexScreen::init() {
 		bool found = false;
 		for (int p = 0; p < (int)skinPacks.size(); ++p) {
 			for (int s = 0; s < (int)skinPacks[p].skins.size(); ++s) {
-				if (skinPacks[p].skins[s] == currentSkin) {
+				if (skinPathKey(skinPacks[p].skins[s]) == skinPathKey(currentSkin)) {
 					currentPackIndex = p;
 					currentSkinIndex = s;
 					found = true;

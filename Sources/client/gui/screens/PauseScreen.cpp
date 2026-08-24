@@ -172,7 +172,7 @@ void PauseScreen::render(int xm, int ym, float a) {
 	std::string skinPath = minecraft->options.getStringValue(OPTIONS_SKIN);
 	if (skinPath.empty() || skinPath == "Default") skinPath = "mob/char.png";
 
-	TextureId skinTexId = minecraft->textures->loadTexture(skinPath);
+	TextureId skinTexId = minecraft->textures->loadTexture(skinPath, false);
 	int skinW = 64, skinH = 64;
 	const TextureData* tdata = minecraft->textures->getTemporaryTextureData(skinTexId);
 	if (tdata) { skinW = tdata->w; skinH = tdata->h; }

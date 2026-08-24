@@ -366,13 +366,16 @@ LocalPlayer::LocalPlayer(Minecraft* minecraft, Level* level, const std::string& 
 #ifndef STANDALONE_SERVER
 
 	if (minecraft->options.getStringValue(OPTIONS_USERNAME).size() != 0) {
-		textureName = "mob/char.png";
+		const std::string configuredSkin = minecraft->options.getStringValue(OPTIONS_SKIN);
+		const bool hasCustomSkin = !configuredSkin.empty() && configuredSkin != "Default";
+		textureName = hasCustomSkin ? configuredSkin : "mob/char.png";
 
 		this->name = minecraft->options.getStringValue(OPTIONS_USERNAME);
 		printf("test \n");
-		// Fetch user skin and cape from Mojang servers in the background (avoids blocking the main thread)
-		// TODO: Fix this memory leak
-		new CThread(fetchSkinForPlayer, this);
+		// Never let the asynchronous account skin replace a user-selected skin.
+		if (!hasCustomSkin) {
+			new CThread(fetchSkinForPlayer, this);
+		}
 		new CThread(fetchCapeForPlayer, this);
 	}
 #endif

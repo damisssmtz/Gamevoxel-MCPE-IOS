@@ -146,9 +146,27 @@ TextureData AppPlatform_iOS::loadTexture(const std::string& filename_, bool text
 //      return out;
 //  }
     
-    NSString *p = [[NSString alloc] initWithUTF8String:filename.c_str()];
-    NSString *path = findResourceInBundle(p, @"png");
-    [p release];
+    NSString *requestedPath = [[NSString alloc] initWithUTF8String:filename_.c_str()];
+    NSString *path = nil;
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    if (!textureFolder) {
+        if ([fileManager fileExistsAtPath:requestedPath]) {
+            path = [requestedPath copy];
+        } else {
+            NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+            NSString *documentsPath = [paths objectAtIndex:0];
+            NSString *documentsFile = [documentsPath stringByAppendingPathComponent:requestedPath];
+            if ([fileManager fileExistsAtPath:documentsFile]) {
+                path = [documentsFile copy];
+            }
+        }
+    }
+    if (!path) {
+        NSString *p = [[NSString alloc] initWithUTF8String:filename.c_str()];
+        path = [findResourceInBundle(p, @"png") copy];
+        [p release];
+    }
+    [requestedPath release];
     NSData *texData = [[NSData alloc] initWithContentsOfFile:path];
     UIImage *image = [[UIImage alloc] initWithData:texData];
 
@@ -328,7 +346,6 @@ bool AppPlatform_iOS::isPowerVR() {
     if (!s) return false;
     return strstr(s, "SGX") != NULL;
 }
-
 
 
 
