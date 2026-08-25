@@ -68,21 +68,41 @@ bool PlayerRenderer::isModernPlayerSkin(Mob* mob) {
 }
 
 static bool isSlimPlayerSkin(Mob* mob, EntityRenderDispatcher* dispatcher) {
-	if (dispatcher && dispatcher->options) {
-		std::string skinModelOpt = dispatcher->options->getStringValue(OPTIONS_SKIN_MODEL);
-		if (!skinModelOpt.empty() && skinModelOpt != "steve" && skinModelOpt != "Default") {
-			return skinModelOpt == "slim";
-		}
-	}
 	std::string tex = mob->getTexture();
 	std::string lowerTex = tex;
 	std::transform(lowerTex.begin(), lowerTex.end(), lowerTex.begin(), ::tolower);
+	
+	// 1. Check filename
 	if (lowerTex.find("cesar") != std::string::npos || lowerTex.find("alex") != std::string::npos || lowerTex.find("slim") != std::string::npos) {
 		return true;
 	}
-	if (lowerTex.find("steve") != std::string::npos) {
+	if (lowerTex.find("steve") != std::string::npos || lowerTex.find("normal") != std::string::npos) {
 		return false;
 	}
+
+	// 2. Check texture pixels (Alex skins have transparent pixels at x=54..55, y=20)
+	if (dispatcher && dispatcher->textures) {
+		TextureId texId = dispatcher->textures->loadTexture(tex, false);
+		if (Textures::isTextureIdValid(texId)) {
+			const TextureData* texData = dispatcher->textures->getTemporaryTextureData(texId);
+			if (texData && texData->w == 64 && texData->h == 64 && texData->data && texData->format == TEXF_UNCOMPRESSED_8888) {
+				const uint8_t* pixels = (const uint8_t*)texData->data;
+				int alphaIndex = (20 * 64 + 54) * 4 + 3; // (x=54, y=20)
+				if (alphaIndex < texData->numBytes && pixels[alphaIndex] < 128) {
+					return true;
+				}
+			}
+		}
+	}
+
+	// 3. Fallback to options
+	if (dispatcher && dispatcher->options) {
+		std::string skinModelOpt = dispatcher->options->getStringValue(OPTIONS_SKIN_MODEL);
+		if (skinModelOpt == "slim") {
+			return true;
+		}
+	}
+	
 	return false;
 }
 

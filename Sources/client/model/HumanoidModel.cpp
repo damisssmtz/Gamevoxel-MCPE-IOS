@@ -50,14 +50,14 @@ HumanoidModel::HumanoidModel( float g /*= 0*/, float yOffset /*= 0*/, int texW /
 		arm0.addBox(-2, -2, -2, 3, 12, 4, g); // Slim Arm0 (3 wide)
 		arm0.setPos(-5, 2.5f + yOffset, 0);
 
-		arm1.mirror = true;
+		arm1.mirror = !modernSkin;
 		arm1.addBox(-1, -2, -2, 3, 12, 4, g); // Slim Arm1 (3 wide)
 		arm1.setPos(5, 2.5f + yOffset, 0);
 	} else {
 		arm0.addBox(-3, -2, -2, 4, 12, 4, g); // Arm0
 		arm0.setPos(-5, 2 + yOffset, 0);
 
-		arm1.mirror = true;
+		arm1.mirror = !modernSkin;
 		arm1.addBox(-1, -2, -2, 4, 12, 4, g); // Arm1
 		arm1.setPos(5, 2 + yOffset, 0);
 	}
@@ -65,7 +65,7 @@ HumanoidModel::HumanoidModel( float g /*= 0*/, float yOffset /*= 0*/, int texW /
 	leg0.addBox(-2, 0, -2, 4, 12, 4, g); // Leg0
 	leg0.setPos(-2, 12 + yOffset, 0);
 
-	leg1.mirror = true;
+	leg1.mirror = !modernSkin;
 	leg1.addBox(-2, 0, -2, 4, 12, 4, g); // Leg1
 	leg1.setPos(2, 12 + yOffset, 0);
 

@@ -558,15 +558,12 @@ void GameRenderer::moveCameraToPlayer(float a) {
 			glRotatef2(rotationY, 0, 1, 0);
 		} else {
 			float yRot = player->yRot;
-			float xRot = player->xRot/* + 180.0f*/;
+			float xRot = player->xRot;
 			
 			int camMode = mc->options.getIntValue(OPTIONS_CAMERA_MODE);
 			float xOffset = 0.0f;
 			float yOffset = 0.0f;
-			if (camMode == 2) {
-				yRot += 180.0f;
-				xRot = -xRot;
-			} else if (camMode == 3) {
+			if (camMode == 3) {
 				xOffset = -0.45f * modelScale;
 				yOffset = -0.4f * modelScale;
 				cameraDist = 2.4f * modelScale;
@@ -576,14 +573,16 @@ void GameRenderer::moveCameraToPlayer(float a) {
 			float zd = Mth::cos(yRot / 180 * Mth::PI) * Mth::cos(xRot / 180 * Mth::PI) * cameraDist;
 			float yd = -Mth::sin(xRot / 180 * Mth::PI) * cameraDist;
 
-			for (int i = 0; i < 8; i++) {
-				float xo = (float)((i & 1) * 2 - 1);
-				float yo = (float)(((i >> 1) & 1) * 2 - 1);
-				float zo = (float)(((i >> 2) & 1) * 2 - 1);
+			if (camMode == 2) {
+				xd = -xd;
+				yd = -yd;
+				zd = -zd;
+			}
 
-				xo *= 0.1f;
-				yo *= 0.1f;
-				zo *= 0.1f;
+			for (int i = 0; i < 8; i++) {
+				float xo = (float)((i & 1) * 2 - 1) * 0.1f;
+				float yo = (float)(((i >> 1) & 1) * 2 - 1) * 0.1f;
+				float zo = (float)(((i >> 2) & 1) * 2 - 1) * 0.1f;
 
 				HitResult hr = mc->level->clip(Vec3(x + xo, y + yo, z + zo), Vec3(x - xd + xo + zo, y - yd + yo, z - zd + zo)); // newTemp
 				if (hr.type != NO_HIT) {
@@ -592,13 +591,11 @@ void GameRenderer::moveCameraToPlayer(float a) {
 				}
 			}
 
-			//glRotatef2(180, 0, 1, 0);
-
-			glRotatef2(player->xRot - xRot, 1, 0, 0);
-			glRotatef2(player->yRot - yRot, 0, 1, 0);
-			glTranslatef2(xOffset, yOffset, (float) -cameraDist);
-			glRotatef2(yRot - player->yRot, 0, 1, 0);
-			glRotatef2(xRot - player->xRot, 1, 0, 0);
+			if (camMode == 2) {
+				glRotatef2(180.0f, 0, 1, 0);
+				glRotatef2(player->xRot * 2.0f, 1, 0, 0);
+			}
+			glTranslatef2(xOffset, yOffset, (camMode == 2 ? cameraDist : (float) -cameraDist));
 		}
 	} else {
 		glTranslatef2(0, 0, -0.1f);
