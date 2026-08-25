@@ -536,8 +536,17 @@ void GameRenderer::moveCameraToPlayer(float a) {
 			glRotatef(player->yRotO + (player->yRot - player->yRotO) * a + 180, 0, -1, 0);
 			glRotatef(player->xRotO + (player->xRot - player->xRotO) * a, -1, 0, 0);
 		}
-	} else if (mc->options.getBooleanValue(OPTIONS_THIRD_PERSON_VIEW)/* || (player->isPlayer() && !player->isAlive())*/) {
-		float cameraDist = thirdDistanceO + (thirdDistance - thirdDistanceO) * a;
+	} else if (mc->options.getIntValue(OPTIONS_CAMERA_MODE) > 0/* || (player->isPlayer() && !player->isAlive())*/) {
+		float modelScale = 1.0f;
+		const std::string preset = mc->options.getStringValue(OPTIONS_SKIN_MODEL);
+		if (preset == "mini_me" || preset == "baby" || preset == "mrmphs") {
+			modelScale = 0.65f;
+		} else if (preset == "chibi" || preset == "big_head") {
+			modelScale = 0.85f;
+		} else if (preset == "giant") {
+			modelScale = 1.4f;
+		}
+		float cameraDist = (thirdDistanceO + (thirdDistance - thirdDistanceO) * a) * modelScale;
 
 		if (mc->options.getBooleanValue(OPTIONS_FIXED_CAMERA)) {
 
@@ -550,6 +559,19 @@ void GameRenderer::moveCameraToPlayer(float a) {
 		} else {
 			float yRot = player->yRot;
 			float xRot = player->xRot/* + 180.0f*/;
+			
+			int camMode = mc->options.getIntValue(OPTIONS_CAMERA_MODE);
+			float xOffset = 0.0f;
+			float yOffset = 0.0f;
+			if (camMode == 2) {
+				yRot += 180.0f;
+				xRot = -xRot;
+			} else if (camMode == 3) {
+				xOffset = -0.45f * modelScale;
+				yOffset = -0.4f * modelScale;
+				cameraDist = 2.4f * modelScale;
+			}
+
 			float xd = -Mth::sin(yRot / 180 * Mth::PI) * Mth::cos(xRot / 180 * Mth::PI) * cameraDist;
 			float zd = Mth::cos(yRot / 180 * Mth::PI) * Mth::cos(xRot / 180 * Mth::PI) * cameraDist;
 			float yd = -Mth::sin(xRot / 180 * Mth::PI) * cameraDist;
@@ -574,7 +596,7 @@ void GameRenderer::moveCameraToPlayer(float a) {
 
 			glRotatef2(player->xRot - xRot, 1, 0, 0);
 			glRotatef2(player->yRot - yRot, 0, 1, 0);
-			glTranslatef2(0, 0, (float) -cameraDist);
+			glTranslatef2(xOffset, yOffset, (float) -cameraDist);
 			glRotatef2(yRot - player->yRot, 0, 1, 0);
 			glRotatef2(xRot - player->xRot, 1, 0, 0);
 		}
@@ -703,7 +725,7 @@ bool GameRenderer::updateFreeformPickDirection(float a, Vec3& outDir) {
 
 	Vec3 c = mc->cameraTargetPlayer->getPos(a);
 
-	bool firstPerson = !mc->options.getBooleanValue(OPTIONS_THIRD_PERSON_VIEW);
+	bool firstPerson = mc->options.getIntValue(OPTIONS_CAMERA_MODE) == 0;
 	const float PickingDistance = firstPerson? 6.0f : 12.0f;
 
 	_shTicks = -1;
@@ -976,7 +998,7 @@ void GameRenderer::renderItemInHand(float a, int eye) {
 	bobHurt(a);
 	if (mc->options.getBooleanValue(OPTIONS_VIEW_BOBBING)) bobView(a);
 
-	if (!mc->options.getBooleanValue(OPTIONS_THIRD_PERSON_VIEW) && (mc->cameraTargetPlayer->isPlayer() && !((Player*)mc->cameraTargetPlayer)->isSleeping())) {
+	if (mc->options.getIntValue(OPTIONS_CAMERA_MODE) == 0 && (mc->cameraTargetPlayer->isPlayer() && !((Player*)mc->cameraTargetPlayer)->isSleeping())) {
 		if (!mc->options.getBooleanValue(OPTIONS_HIDEGUI)) {
 			float fov = getFov(a, false);
 			if (fov != _setupCameraFov) {
@@ -990,7 +1012,7 @@ void GameRenderer::renderItemInHand(float a, int eye) {
 	}
 
 	glPopMatrix2();
-	if (!mc->options.getBooleanValue(OPTIONS_THIRD_PERSON_VIEW) && (mc->cameraTargetPlayer->isPlayer() && !((Player*)mc->cameraTargetPlayer)->isSleeping())) {
+	if (mc->options.getIntValue(OPTIONS_CAMERA_MODE) == 0 && (mc->cameraTargetPlayer->isPlayer() && !((Player*)mc->cameraTargetPlayer)->isSleeping())) {
 		itemInHandRenderer->renderScreenEffect(a);
 		bobHurt(a);
 	}

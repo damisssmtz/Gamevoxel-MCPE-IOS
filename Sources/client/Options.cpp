@@ -14,6 +14,7 @@ bool Options::debugGl = false;
 OptionInt difficulty("difficulty", Difficulty::NORMAL, 0, Difficulty::COUNT);
 OptionBool hidegui("hidegui", false);
 OptionBool thirdPersonView("thirdperson", false);
+OptionInt cameraMode("cameramode", 0, 0, 3);
 OptionBool renderDebug("renderDebug", false);
 OptionBool smoothCamera("smoothCamera", false);
 OptionBool fixedCamera("fixedCamera", false);
@@ -116,6 +117,7 @@ void Options::initTable() {
     m_options[OPTIONS_DIFFICULTY] = &difficulty;
     m_options[OPTIONS_HIDEGUI] = &hidegui;
     m_options[OPTIONS_THIRD_PERSON_VIEW] = &thirdPersonView;
+    m_options[OPTIONS_CAMERA_MODE] = &cameraMode;
     m_options[OPTIONS_RENDER_DEBUG] = &renderDebug;
     m_options[OPTIONS_SMOOTH_CAMERA] = &smoothCamera;
     m_options[OPTIONS_FIXED_CAMERA] = &fixedCamera;
@@ -250,10 +252,16 @@ void Options::set(OptionId key, int value) {
 
 void Options::toggle(OptionId key) {
 	auto option = opt<OptionBool>(key);
-
 	if (option) {
 		option->toggle();
 		notifyOptionUpdate(key, option->get());
+	} else if (key == OPTIONS_CAMERA_MODE) {
+		auto intOpt = opt<OptionInt>(key);
+		if (intOpt) {
+			int currentMode = intOpt->get();
+			intOpt->set((currentMode + 1) % 4);
+			notifyOptionUpdate(key, intOpt->get());
+		}
 	}
 }
 

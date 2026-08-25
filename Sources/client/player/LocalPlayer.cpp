@@ -420,6 +420,24 @@ bool LocalPlayer::isSolidTile(int x, int y, int z) {
 }
 
 void LocalPlayer::tick() {
+	const std::string preset = minecraft->options.getStringValue(OPTIONS_SKIN_MODEL);
+	float modelScale = 1.0f;
+	if (preset == "mini_me" || preset == "baby" || preset == "mrmphs") {
+		modelScale = 0.65f;
+	} else if (preset == "chibi" || preset == "big_head") {
+		modelScale = 0.85f;
+	} else if (preset == "giant") {
+		modelScale = 1.4f;
+	}
+	
+	float targetHeight = 1.62f * modelScale;
+	if (this->heightOffset != targetHeight) {
+		float diff = targetHeight - this->heightOffset;
+		this->heightOffset = targetHeight;
+		this->setSize(0.6f * modelScale, 1.8f * modelScale);
+		this->y += diff; // Adjust eye position so feet stay at the same level
+		this->setPos(x, y, z); // Update bounding box
+	}
 
 	super::tick();
 	if(!useItem.isNull()) {

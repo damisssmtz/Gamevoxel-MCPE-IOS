@@ -737,12 +737,9 @@ void Minecraft::tickInput() {
 			}
 
 			if (key == Keyboard::KEY_F5) {
-				options.toggle(OPTIONS_THIRD_PERSON_VIEW);
-				/*
-				ImprovedNoise noise;
-				for (int i = 0; i < 16; ++i)
-				printf("%d\t%f\n", i, noise.grad2(i, 3, 8));
-				*/
+				int currentMode = options.getIntValue(OPTIONS_CAMERA_MODE);
+				currentMode = (currentMode + 1) % 4;
+				options.set(OPTIONS_CAMERA_MODE, currentMode);
 			}
 
 			if (!screen && key == Keyboard::KEY_O || key == 250) {

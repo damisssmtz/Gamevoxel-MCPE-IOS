@@ -362,7 +362,9 @@ void TouchscreenInput_TestFps::tick( Player* player )
 			if (Multitouch::isReleased(p)) {
 				_minecraft->soundEngine->playUI("random.click", 1, 1);
 				// Toggle third person view like F5
-				_minecraft->options.toggle(OPTIONS_THIRD_PERSON_VIEW);
+				int currentMode = _minecraft->options.getIntValue(OPTIONS_CAMERA_MODE);
+				currentMode = (currentMode + 1) % 4;
+				_minecraft->options.set(OPTIONS_CAMERA_MODE, currentMode);
 			}
 		}
 

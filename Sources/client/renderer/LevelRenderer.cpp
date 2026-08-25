@@ -1060,7 +1060,7 @@ void LevelRenderer::renderEntities(Vec3 cam, Culler* culler, float a) {
 		for (int i = 0; i < totalEntities; i++) {
 			Entity* entity = entities[i];
 
-			bool thirdPerson = mc->options.getBooleanValue(OPTIONS_THIRD_PERSON_VIEW);
+			bool thirdPerson = mc->options.getIntValue(OPTIONS_CAMERA_MODE) > 0;
 
 			if (entity->shouldRender(cam) && culler->isVisible(entity->bb))
 			{
@@ -1714,19 +1714,19 @@ void LevelRenderer::takePicture( TripodCamera* cam, Entity* entity )
 	// Push old values
 	Mob* oldCameraEntity = mc->cameraTargetPlayer;
 	bool hideGui = mc->options.getBooleanValue(OPTIONS_HIDEGUI);
-	bool thirdPerson = mc->options.getBooleanValue(OPTIONS_THIRD_PERSON_VIEW);
+	bool thirdPerson = mc->options.getIntValue(OPTIONS_CAMERA_MODE) > 0;
 
 	// @huge @attn: This is highly illegal, super temp!
 	mc->cameraTargetPlayer = (Mob*)cam;
 	mc->options.set(OPTIONS_HIDEGUI, true);
-	mc->options.set(OPTIONS_THIRD_PERSON_VIEW, false);
+	mc->options.set(OPTIONS_CAMERA_MODE, 0);
 
 	mc->gameRenderer->renderLevel(0);
 
 	// Pop values back
 	mc->cameraTargetPlayer = oldCameraEntity;
 	mc->options.set(OPTIONS_HIDEGUI, hideGui);
-	mc->options.set(OPTIONS_THIRD_PERSON_VIEW, thirdPerson);
+	mc->options.set(OPTIONS_CAMERA_MODE, thirdPerson ? 1 : 0);
 
 	_t_keepPic = -1;
 

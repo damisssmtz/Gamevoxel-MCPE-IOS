@@ -27,7 +27,7 @@ PauseScreen::PauseScreen(bool wasBackPaused)
 //	bThirdPerson(0),
 	wasBackPaused(wasBackPaused),
 	// bSound(OPTIONS_SOUND_VOLUME, 1, 0),
-	bThirdPerson(OPTIONS_THIRD_PERSON_VIEW),
+	bThirdPerson(OPTIONS_CAMERA_MODE),
     bHideGui(OPTIONS_HIDEGUI)
 {
 	ImageDef def;

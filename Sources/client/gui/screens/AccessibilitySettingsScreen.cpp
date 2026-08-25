@@ -17,7 +17,7 @@ void AccessibilitySettingsScreen::init() {
     group = new OptionsGroup("options.accessibility.title");
     group->addOptionItem(OPTIONS_USERNAME, minecraft);
     group->addOptionItem(OPTIONS_DIFFICULTY, minecraft);
-    group->addOptionItem(OPTIONS_THIRD_PERSON_VIEW, minecraft);
+    group->addOptionItem(OPTIONS_CAMERA_MODE, minecraft);
     group->addOptionItem(OPTIONS_GUI_SCALE, minecraft);
     group->addOptionItem(OPTIONS_SERVER_VISIBLE, minecraft);
     group->addOptionItem(OPTIONS_HIGH_CONTRAST, minecraft);

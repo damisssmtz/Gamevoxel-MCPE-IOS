@@ -101,8 +101,6 @@ void PlayerRenderer::scale(Mob* mob, float a) {
 	}
 
 	if (modelScale != 1.0f) {
-		// Keep the feet close to the ground while changing the full model size.
-		glTranslatef2(0.0f, (1.0f - modelScale) * 1.5f, 0.0f);
 		glScalef2(modelScale, modelScale, modelScale);
 	}
 }
