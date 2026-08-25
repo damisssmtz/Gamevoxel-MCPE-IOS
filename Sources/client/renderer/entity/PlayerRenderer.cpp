@@ -108,21 +108,6 @@ static bool isSlimPlayerSkin(Mob* mob, EntityRenderDispatcher* dispatcher) {
 
 void PlayerRenderer::scale(Mob* mob, float a) {
 	super::scale(mob, a);
-	if (!entityRenderDispatcher || !entityRenderDispatcher->options) return;
-
-	const std::string preset = entityRenderDispatcher->options->getStringValue(OPTIONS_SKIN_MODEL);
-	float modelScale = 1.0f;
-	if (preset == "mini_me" || preset == "baby" || preset == "mrmphs") {
-		modelScale = 0.65f;
-	} else if (preset == "chibi" || preset == "big_head") {
-		modelScale = 0.85f;
-	} else if (preset == "giant") {
-		modelScale = 1.4f;
-	}
-
-	if (modelScale != 1.0f) {
-		glScalef2(modelScale, modelScale, modelScale);
-	}
 }
 
 void PlayerRenderer::renderName( Mob* mob, float x, float y, float z ){
@@ -140,6 +125,22 @@ void PlayerRenderer::render(Entity* mob_, float x, float y, float z, float rot, 
 		model = desired;
 		humanoidModel = desired;
 	}
+
+	if (entityRenderDispatcher && entityRenderDispatcher->options) {
+		const std::string preset = entityRenderDispatcher->options->getStringValue(OPTIONS_SKIN_MODEL);
+		float sHead = 1.0f, sBody = 1.0f, sLimbs = 1.0f;
+		if (preset == "mini_me" || preset == "baby" || preset == "mrmphs") {
+			sHead = 1.35f; sBody = 0.5f; sLimbs = 0.5f;
+		} else if (preset == "chibi" || preset == "big_head") {
+			sHead = 1.65f; sBody = 0.85f; sLimbs = 0.85f;
+		} else if (preset == "giant") {
+			sHead = 1.4f; sBody = 1.4f; sLimbs = 1.4f;
+		}
+		desired->scaleHead = sHead; desired->scaleBody = sBody; desired->scaleLimbs = sLimbs;
+		if (armorParts1) { armorParts1->scaleHead = sHead; armorParts1->scaleBody = sBody; armorParts1->scaleLimbs = sLimbs; }
+		if (armorParts2) { armorParts2->scaleHead = sHead; armorParts2->scaleBody = sBody; armorParts2->scaleLimbs = sLimbs; }
+	}
+
 	HumanoidMobRenderer::render(mob_, x, y, z, rot, a);
 }
 int PlayerRenderer::prepareArmor(Mob* mob, int layer, float a) {

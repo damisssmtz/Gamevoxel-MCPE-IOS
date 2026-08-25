@@ -113,22 +113,81 @@ void HumanoidModel::render(Entity* e, float time, float r, float bob, float yRot
 	setupAnim(time, r, bob, yRot, xRot, scale);
 	
 	// Sync overlay with head rotation/position
-	
 	hair.xRot = head.xRot;
 	hair.yRot = head.yRot;
 	hair.zRot = head.zRot;
 	hair.y = head.y;
-	
 
+	float feetY = 12.0f * scaleBody + 12.0f * scaleLimbs;
+	float yOffsetDown = (24.0f - feetY);
+
+	glPushMatrix2();
+	glTranslatef2(0.0f, yOffsetDown * scale, 0.0f);
+
+	// 1. Head
+	glPushMatrix2();
+	glTranslatef2(head.x * scale, head.y * scale, head.z * scale);
+	glScalef2(scaleHead, scaleHead, scaleHead);
+	glTranslatef2(-head.x * scale, -head.y * scale, -head.z * scale);
 	head.render(scale);
-	
 	hair.render(scale);
-	
+	glPopMatrix2();
+
+	// 2. Body
+	glPushMatrix2();
+	glTranslatef2(body.x * scale, body.y * scale, body.z * scale);
+	glScalef2(scaleBody, scaleBody, scaleBody);
+	glTranslatef2(-body.x * scale, -body.y * scale, -body.z * scale);
 	body.render(scale);
+	glPopMatrix2();
+
+	// 3. Arms
+	float origArm0X = arm0.x; float origArm0Y = arm0.y; float origArm0Z = arm0.z;
+	float origArm1X = arm1.x; float origArm1Y = arm1.y; float origArm1Z = arm1.z;
+	arm0.x *= scaleBody; arm0.y *= scaleBody; arm0.z *= scaleBody;
+	arm1.x *= scaleBody; arm1.y *= scaleBody; arm1.z *= scaleBody;
+
+	glPushMatrix2();
+	glTranslatef2(arm0.x * scale, arm0.y * scale, arm0.z * scale);
+	glScalef2(scaleLimbs, scaleLimbs, scaleLimbs);
+	glTranslatef2(-arm0.x * scale, -arm0.y * scale, -arm0.z * scale);
 	arm0.render(scale);
+	glPopMatrix2();
+
+	glPushMatrix2();
+	glTranslatef2(arm1.x * scale, arm1.y * scale, arm1.z * scale);
+	glScalef2(scaleLimbs, scaleLimbs, scaleLimbs);
+	glTranslatef2(-arm1.x * scale, -arm1.y * scale, -arm1.z * scale);
 	arm1.render(scale);
+	glPopMatrix2();
+
+	arm0.x = origArm0X; arm0.y = origArm0Y; arm0.z = origArm0Z;
+	arm1.x = origArm1X; arm1.y = origArm1Y; arm1.z = origArm1Z;
+
+	// 4. Legs
+	float origLeg0X = leg0.x; float origLeg0Y = leg0.y; float origLeg0Z = leg0.z;
+	float origLeg1X = leg1.x; float origLeg1Y = leg1.y; float origLeg1Z = leg1.z;
+	leg0.x *= scaleBody; leg0.y *= scaleBody; leg0.z *= scaleBody;
+	leg1.x *= scaleBody; leg1.y *= scaleBody; leg1.z *= scaleBody;
+
+	glPushMatrix2();
+	glTranslatef2(leg0.x * scale, leg0.y * scale, leg0.z * scale);
+	glScalef2(scaleLimbs, scaleLimbs, scaleLimbs);
+	glTranslatef2(-leg0.x * scale, -leg0.y * scale, -leg0.z * scale);
 	leg0.render(scale);
+	glPopMatrix2();
+
+	glPushMatrix2();
+	glTranslatef2(leg1.x * scale, leg1.y * scale, leg1.z * scale);
+	glScalef2(scaleLimbs, scaleLimbs, scaleLimbs);
+	glTranslatef2(-leg1.x * scale, -leg1.y * scale, -leg1.z * scale);
 	leg1.render(scale);
+	glPopMatrix2();
+
+	leg0.x = origLeg0X; leg0.y = origLeg0Y; leg0.z = origLeg0Z;
+	leg1.x = origLeg1X; leg1.y = origLeg1Y; leg1.z = origLeg1Z;
+
+	glPopMatrix2(); // pop yOffsetDown
 	bowAndArrow = false;
 }
 
