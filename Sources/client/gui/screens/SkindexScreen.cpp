@@ -212,12 +212,19 @@ static bool readBedrockSkins(Minecraft* minecraft, const std::string& dirPath, S
 	};
 
 	size_t pos = skinsArrayPos;
-	while ((pos = content.find('{', pos)) != std::string::npos && pos < skinsArrayEnd) {
-		size_t endObj = content.find('}', pos);
-		if (endObj == std::string::npos || endObj > skinsArrayEnd) break;
-
-		std::string objStr = content.substr(pos, endObj - pos + 1);
-
+	while (true) {
+		size_t nextTex = content.find("\"texture\"", pos);
+		if (nextTex == std::string::npos || nextTex > skinsArrayEnd) break;
+		
+		// Find boundaries of this object roughly
+		size_t objStart = content.rfind('{', nextTex);
+		size_t objEnd = content.find('}', nextTex);
+		if (objStart == std::string::npos || objEnd == std::string::npos) {
+			pos = nextTex + 9;
+			continue;
+		}
+		
+		std::string objStr = content.substr(objStart, objEnd - objStart + 1);
 		std::string texture = getJsonProp(objStr, "texture");
 		std::string locName = getJsonProp(objStr, "localization_name");
 		std::string geometry = getJsonProp(objStr, "geometry");
@@ -237,7 +244,7 @@ static bool readBedrockSkins(Minecraft* minecraft, const std::string& dirPath, S
 			pack.skinGeometries.push_back(geometry);
 		}
 
-		pos = endObj + 1;
+		pos = objEnd + 1;
 	}
 
 	std::string langContent = readAssetFileContent(minecraft, dirPath + "/texts/en_US.lang");
